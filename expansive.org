@@ -1,0 +1,68 @@
+#+property: header-args:sage :session expansive :eval never-export :exports both
+#+title: Expansive motions for central charges of (finite) Cartan types
+
+* Setup functions
+The following function sets up the simple and positive roots for a given Cartan type, and also records the coefficients of each positive root with respect to the simples.
+#+begin_src sage :results silent
+  def ct_setup(ct):
+      """
+      Given a Cartan type `ct`, set up the simple roots, positive roots, as well as the matrix giving the coefficients of any positive root with respect to a simple.
+      """
+      simples = ct.root_system().root_lattice().simple_roots()
+      positives = ct.root_system().root_lattice().positive_roots()
+      index_set = ct.dynkin_diagram().vertices()
+
+      root_coefficient_matrix = matrix([[r.coefficient(i) for i in index_set] for r in positives])
+      return index_set, root_coefficient_matrix
+#+end_src
+
+#+begin_src sage :results silent
+  def expansive_polytope(ct, simple_cc_matrix, translation_parameters, base_ring=QQ):
+      """
+      Given a Cartan type and a matrix of central charges for its simple roots, return the polytope of expansive motions.
+      """
+      index_set, root_coefficient_matrix = ct_setup(ct)
+      simple_velocities = matrix([[var('a' + str(i)), var('b' + str(i))] for i in index_set])
+      positive_velocities = root_coefficient_matrix * simple_velocities
+
+      positive_cc_matrix = root_coefficient_matrix * simple_cc_matrix
+
+      def eq_to_ieq(expr, param=0):
+          print("Generating inequality.")
+          return [param] + [expr.coefficient(x) for x in simple_velocities.list()]
+
+      ieqs = [eq_to_ieq(x.dot_product(y), param=z) for (x,y,z) in zip(positive_velocities, positive_cc_matrix, translation_parameters)]
+      eqs = [eq_to_ieq(positive_velocities[0][0]), eq_to_ieq(positive_velocities[0][1]), eq_to_ieq(positive_velocities[1][0])]
+      print(ieqs)
+      P = Polyhedron(ieqs=ieqs, eqns=eqs, base_ring=base_ring)
+      return P      
+#+end_src
+
+* Particular examples
+** Type \(A_4\)
+#+begin_src sage :results silent
+  import random
+  a4 = CartanType('A4')
+  a4_index_set, root_coefficient_matrix = ct_setup(a4)
+  a4_simple_cc_matrix = matrix([vector([i,i**2]) for i in a4_index_set])
+  a4_translation_parameters = [random.randint(0,20) for _ in root_coefficient_matrix]
+  P_a4 = expansive_polytope(a4, a4_simple_cc_matrix, a4_translation_parameters)
+#+end_src
+
+** Type \(A_3\)
+#+begin_src sage :results silent
+  a3 = CartanType('A3')
+  a3_index_set, root_coefficient_matrix = ct_setup(a3)
+  a3_simple_cc_matrix = matrix([vector([i,i**2]) for i in a3_index_set])
+  a3_translation_parameters = [random.randint(0,20) for _ in root_coefficient_matrix]
+  P_a3 = expansive_polytope(a3, a3_simple_cc_matrix, a3_translation_parameters)
+#+end_src
+
+
+** Type \(D_4\)
+#+begin_src sage :results silent
+  d4 = CartanType('D4')
+  d4_index_set, _ = ct_setup(d4)
+  d4_simple_cc_matrix = matrix([vector([i,i**2]) for i in d4_index_set])
+  P_d4 = expansive_polytope(d4, d4_simple_cc_matrix)
+#+end_src
